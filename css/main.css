@@ -15,7 +15,7 @@
     color: #222;
     font-family: Noto Sans TC,PingFang HK,Helvetica Neue,Helvetica,Arial,sans-serif,Segoe UI,Apple Color Emoji,Segoe UI Emoji,Segoe UI Symbol;
     font-weight: 300;
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.5;
   }
   
@@ -92,6 +92,14 @@
     color: #E4FDE1;
     text-decoration: none;
     padding: 5px 0;
+  }
+
+  footer .btn {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 15px;
   }
   
   .footer__logo {
@@ -311,25 +319,25 @@
     text-shadow: none;
   }
   
-  button {
+  .btn {
     color:#fff; 
-    background-color: #67c23a;
-    border-color: #67c23a;
+    background-color: #ff8100;
+    border-color: #ff8100;
     width:92px; 
     height:46px; 
     border:none; 
-    border-radius:.25em;
+    border-radius:4px;
   }
   
-  button:active {
-    background: #5daf34;
-    border-color: #5daf34;
+  .btn:active {
+    background: #e96d00;
+    border-color: #e96d00;
     color: #fff;
   }
   
-  button:hover {
-    background: #85ce61;
-    border-color: #85ce61;
+  .btn:hover {
+    background: #ffb660;
+    border-color: #ffb660;
     color: #fff;
   }
   

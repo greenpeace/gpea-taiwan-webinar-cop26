@@ -1,146 +1,11 @@
 const jquery = require('jquery');
 $ = window.$ = window.jQuery = jquery;
 
-//var endpoint = 'https://cloud.greentw.greenpeace.org/websign-dummy';
 //var endpoint = 'https://cors-anywhere.small-service.gpeastasia.org/https://cloud.greentw.greenpeace.org/websign-dummy';
 var endpoint = 'https://cloud.greentw.greenpeace.org/websign';
-//var apiUrl = 'https://script.google.com/macros/s/AKfycbxv51TSdarVToqYywWgSjOpz0wy4ml1HYh4WkMgv5uNRHlVtzZikO0wJu5ZpVZ3bjPp/exec';//dummy
-var apiUrl = '';
-var googleSheetUrl = '';
+
 var contentUrl = '';
-var successful_list = [];
-var failed_list = [];
-
-/**
- * in regResult(), if all the registed sessions have returned from API
- * then display the reulst in the Thank You Page
- * 
- * @param {*} curr_ind: current index of checkedSessions
- * @param {*} sessionSize: number of checked sessions
- */
-function regResult(curr_ind, sessionSize) {
-  // console.log("regResult - curr_ind:", curr_ind);
-  // console.log("regResult - sessionSize:", sessionSize);
-  if (curr_ind === sessionSize) {                      
-    let result_str = "";    
-    
-    if (successful_list.length > 0) {                
-      successful_list.sort();
-      result_str = "<p>您成功報名了：</p>";
-      successful_list.forEach(item => {
-        result_str += "<li>" + item + "</li>";
-      });
-    }
-
-    if (failed_list.length > 0) {
-      failed_list.sort();
-      result_str += "<p>報名以下場次失敗了：</p>";
-      successful_list.forEach(item => {
-        result_str += item + "<br>";
-      });                  
-    }
-
-    $(".thank-you-div .content").html(result_str + $(".thank-you-div .content").html());
-    
-    //showFullPageMessage(result_str, "#000", "#fff", true);
-    $(".form-div").hide();                      
-    $(".thank-you-div").show();
-    window.scrollTo(0, 0);
-    hideFullPageLoading();    
-  }  
-}
-
-/**
- *  Submit one session at a time
- */
-function submitPage(formData, checkedSessions, labelSessions, curr_ind) {
-  formData.set('CampaignId', checkedSessions[curr_ind].value);
-  formData.set('EndDate', document.querySelector(`#endDate${labelSessions[curr_ind]}`).value);  
-  formData.set('Session', document.querySelector(`#fullName-session${labelSessions[curr_ind]}`).value);    
-  //console.log(document.querySelector(`#fullName-session${labelSessions[curr_ind]}`).value);
-
-  return fetch(endpoint, {
-    method: 'POST',
-    body: formData
-  })
-  .then(response => response.json())
-  .then(response => {    
-    if (response) {              										                
-      if (response.Supporter) {              
-        // add tracking code here        
-        // window.dataLayer = window.dataLayer || [];
-        // window.dataLayer.push({
-        //     'event': 'gaEvent',
-        //     'eventCategory': 'webinars',
-        //     'eventAction': 'signup',
-        //     'eventLabel': 'DD webinar'
-        // });3
-
-        let sessionSize = document.querySelectorAll('input[name="sessions[]"]:checked').length - 1;             
-        successful_list.push(document.getElementById(`fullName-session${labelSessions[curr_ind]}`).value);                    
-        regResult(curr_ind, sessionSize);       
-
-        //console.log(formData);
-        fetch(apiUrl, {
-          method: 'POST',
-          body: formData
-        });
-      }
-    }
-    //hideFullPageLoading();    
-  })      
-  .catch(error => {          
-    console.log("fetch error");
-    console.error(error);
-    
-    failed_list.push(document.getElementById(`fullName-session${index}`).value);    
-    regResult(curr_ind, sessionSize);    
-  })
-}
-
-/**
- * 
- * @param {*} formData: collection of form fileds
- * @param {*} checkedSessions: collection of user checked sessions 
- * @param {*} labelSessions: collection of checkedSessions indexes
- * @param {*} curr_ind: current index of checkedSessions
- * @returns 
- */
- 
-function runSerial(formData, checkedSessions, labelSessions, curr_ind) {
-  var result = Promise.resolve();  
-  checkedSessions.forEach(checkedSession => {        
-    result = result.then(() => submitPage(formData, checkedSessions, labelSessions, curr_ind++));
-  });
-  return result;
-}
-
-/**
- * http://techslides.com/convert-csv-to-json-in-javascript
- * 
- * @param  {text}
- * @return {Array}
- */
-function csvJSON(csv){
-  var lines=csv.split("\n");
-  var result = [];
-  var headers=lines[0].split(",").map(Function.prototype.call, String.prototype.trim);
-
-  for(var i=1;i<lines.length;i++){
-    var obj = {};
-    var currentline=lines[i].split(",");
-
-    for(var j=0;j<headers.length;j++){
-      obj[headers[j]] = currentline[j];
-    }
-
-    result.push(obj);
-  }
-
-  return result; //JavaScript object
-  // return JSON.stringify(result); //JSON
-}
-
+var webinarCampaignId = '7012u000000PAnzAAG';
 
 // collect Form Values
 var collectFormValues = () => {
@@ -173,8 +38,8 @@ var collectFormValues = () => {
   })
 
   // add extra fields  
-  //dict['CampaignData1__c'] = document.querySelector('[name=gender]:checked').value;
-  //dict['CampaignData2__c'] = sessions.join(',');  
+  dict['CampaignData1__c'] = searchParams.get('type');
+  dict['CampaignData2__c'] = document.querySelector('[name=drawLots]:checked').value;
   dict['CampaignData5__c'] = window.location.href;
 
   // wrap into FormData
@@ -226,45 +91,36 @@ const formValidate = () => {
     required: "必填欄位"
   });
   
-  $("#mc-form").validate({           
-    //debug: true,
-    rules: {
-      "sessions[]": {
-        required: true,
-        minlength: 1
-      }
-    },
-  	groups: {
-     'session-group': "sessions[]"
-  	},
-  	messages: {
-			'session-group': {
-				required: '此欄必填'
-			}
-		},
-	  errorPlacement: function(error, element) {
-		    if(element.attr("name") == "sessions[]") {
-		    	error.insertAfter(".webinar__label");
-		    } else {
-		      error.insertAfter(element);
-		    }
-		},
+  $("#mc-form").validate({    
     submitHandler: function() {
       showFullPageLoading();
 
       var formData = collectFormValues();              
-      //console.log(formData);
-      //var hasFailed = false
-      let checkedSessions = document.querySelectorAll('input[name="sessions[]"]:checked');            
-      let labelSessions = [];
-      //let endDates = [];
-
-      document.querySelectorAll('input[name="sessions[]"]:checked').forEach(function(el, index) {        
-        labelSessions.push(el.id.substr(el.id.indexOf('session') + 7));
-        //endDates.push(document.querySelector(`#endDate${index}`).value);
-      });    
       
-      runSerial(formData, checkedSessions, labelSessions, 0);            
+      fetch(endpoint, {
+          method: 'POST',
+          body: formData
+      })
+      .then(response => {return response.json()})
+      .then(response => {            
+        //console.log(response);
+        if (response.Status == "201") {              
+          // add tracking code here
+          sendPetitionTracking('2021-cop_26');                      
+        }
+        
+        $(".form-div").hide();                      
+        $(".thank-you-div").show();
+        //window.scrollTo(0, 0);
+        document.getElementById('thank-you-div').scrollIntoView();
+        hideFullPageLoading();    
+      })
+      .catch(error => {
+        console.log(error);
+        hideFullPageLoading();
+        // display the error message    
+        showFullPageMessage("報名失敗，請稍後再嘗試", "#fff", "#66cc00", false);
+      }); 
     }
   });
 }
@@ -382,7 +238,28 @@ const hideFullPageLoading = () => {
 }
 
 /**
- * Set the target of DD webinar: donor / supporter / retention
+ * Send Petition Tracking
+ */
+const sendPetitionTracking = (eventLabel, eventValue) => {
+	window.dataLayer = window.dataLayer || [];
+
+	window.dataLayer.push({
+	    'event': 'gaEvent',
+	    'eventCategory': 'petitions',
+	    'eventAction': 'signup',
+	    'eventLabel': eventLabel,
+	    'eventValue' : eventValue
+	});
+
+	window.dataLayer.push({
+	    'event': 'fbqEvent',
+	    'contentName': eventLabel,
+	    'contentCategory': 'Petition Signup'
+	});
+}
+
+/**
+ * Set the target of the webinar: donor / supporter
  */
 const setTarget = () => {
   let urlParams = new URLSearchParams(window.location.search);
@@ -390,78 +267,15 @@ const setTarget = () => {
 
   //set url of app script for sign-up log
   if (type === "donor") {
-    apiUrl = 'https://script.google.com/macros/s/AKfycbw-tVU4LaVVlq4OLYVcIgw6CTldyxNxlzKypAGfiwgNTROvITI3x_USGcVt09bj4-qUgA/exec';
-    contentUrl = 'https://docs.google.com/spreadsheets/u/0/d/1m4Ys7KGajCNjLXkZYK1Ct1EiI2hRyoX1vO35JGECh8Q/export?format=csv&id=1m4Ys7KGajCNjLXkZYK1Ct1EiI2hRyoX1vO35JGECh8Q&gid=1562944622';
-    googleSheetUrl = 'https://docs.google.com/spreadsheets/u/0/d/1m4Ys7KGajCNjLXkZYK1Ct1EiI2hRyoX1vO35JGECh8Q/export?format=csv&id=1m4Ys7KGajCNjLXkZYK1Ct1EiI2hRyoX1vO35JGECh8Q&gid=0';
-  } else if (type === "supporter") {
-    apiUrl = 'https://script.google.com/macros/s/AKfycbwl2OACweJFklrhOlWT_Do9n68b6DLWcpPBAYDEqGfab9nJqLUJmv7QRz9FoyGl5MFw/exec';
-    contentUrl = 'https://docs.google.com/spreadsheets/u/0/d/1zf00KMnjfJY9lHou15jHREaRD9PBK6AgjNialKNkzGQ/export?format=csv&id=1zf00KMnjfJY9lHou15jHREaRD9PBK6AgjNialKNkzGQ&gid=1562944622';
-    googleSheetUrl = 'https://docs.google.com/spreadsheets/u/0/d/1zf00KMnjfJY9lHou15jHREaRD9PBK6AgjNialKNkzGQ/export?format=csv&id=1zf00KMnjfJY9lHou15jHREaRD9PBK6AgjNialKNkzGQ&gid=0';
-  } else if (type === "retention") {
-    //apiUrl = 'https://gsheet-toolkit.small-service.gpeastasia.org/v1/db/tw-dd_webinar-donor_retension';
-    apiUrl = 'https://script.google.com/macros/s/AKfycbysg-72lpq29C1hMsaDniwiylOUKCuzUlRq8w5-kKli4ggI4_eYGHYdNOpI5vTorzR6/exec';
-    contentUrl = 'https://docs.google.com/spreadsheets/u/0/d/1V0c57qqhw28IXHkODvN9apqOG359N1YZdrtH_7_BkEM/export?format=csv&id=1V0c57qqhw28IXHkODvN9apqOG359N1YZdrtH_7_BkEM&gid=1562944622';
-    googleSheetUrl = 'https://docs.google.com/spreadsheets/u/0/d/1V0c57qqhw28IXHkODvN9apqOG359N1YZdrtH_7_BkEM/export?format=csv&id=1V0c57qqhw28IXHkODvN9apqOG359N1YZdrtH_7_BkEM&gid=0';
+    //apiUrl = 'https://script.google.com/macros/s/AKfycbw-tVU4LaVVlq4OLYVcIgw6CTldyxNxlzKypAGfiwgNTROvITI3x_USGcVt09bj4-qUgA/exec';
+    contentUrl = 'https://gsheet-toolkit.small-service.gpeastasia.org/v1/db/tw-COP26_donor';    
+  } else if (type === "supporter") {    
+    //apiUrl = 'https://script.google.com/macros/s/AKfycbw0Q-7Jsb_UZ0_AXiLEWtCYDyoNAj1cygBEoXhqX965bFLajFGC0UL7SUrGUAEjTqch/exec';
+    contentUrl = 'https://gsheet-toolkit.small-service.gpeastasia.org/v1/db/tw-COP26_supporter';    
+    document.querySelector('.drawLots__div').style.display = 'none';
   } else {
     showFullPageMessage("請確認報名網址", "#fff", "#66cc00", false);
   }
-}
-
-/**
- * swap the images in img-div when scrolling
- */
-const moniterScroll = () => {
-  if ($(window).width() <= 800) {
-    return;
-  }
-
-  $.fn.isInViewport = function() {
-    var elementTop = $(this).offset().top;
-    var elementBottom = elementTop + $(this).outerHeight();
-
-    var viewportTop = $(window).scrollTop();
-    var viewportBottom = viewportTop + $(window).height();
-
-    return elementBottom > viewportTop && elementTop < viewportBottom;
-  };
-
-  let currentMonth = new Date().getMonth() + 1;
-  if (currentMonth > 12)
-    currentMonth = 1;
-
-  let nextMonth = currentMonth + 1;
-  if (nextMonth > 12)
-    nextMonth = 1;  
-  
-  $('#month-' + nextMonth).hide();
-
-  $(window).on('scroll', function() {
-    if ($('.' + currentMonth.toString()).length && $('.' + nextMonth.toString()).length
-        && $('#month-' + currentMonth).length && $('#month-' + nextMonth).length) {
-      if ($('.' + currentMonth.toString()).isInViewport()) {      
-        $('#month-' + currentMonth).fadeIn(1000);
-        $('#month-' + nextMonth).hide();
-        //console.log(currentMonth, ' in viewport');  
-        /*        
-        if ($('#month-' + currentMonth).prev().length
-          && $('#month-' + currentMonth).prev()[0].id== 'month-' + nextMonth) {          
-          $('#month-' + currentMonth).insertBefore('#month-' + nextMonth);                      
-        }      
-        $('#month-' + currentMonth).css('position', 'sticky');
-        $('#month-' + nextMonth).css('position', 'relative');*/
-      } else if ($('.' + nextMonth.toString()).isInViewport()) {  
-        $('#month-' + nextMonth).fadeIn(1000);
-        $('#month-' + currentMonth).hide();    
-        //console.log(nextMonth, ' in viewport');
-        /*
-        $('#month-' + nextMonth).insertBefore('#month-' + currentMonth);  
-        $('#month-' + nextMonth).css('position', 'sticky');
-        $('#month-' + currentMonth).css('position', 'relative');*/
-      } else {
-        //console.log('not in viewport');
-      } 
-    }        
-  });
 }
 
 /**
@@ -472,8 +286,6 @@ document.addEventListener("DOMContentLoaded", function(event) {
 
   // Set the target of DD webinar
   setTarget();
-
-  moniterScroll();
 
   // monitor the status of OptIn
   const OptIn = document.getElementById('OptIn')
@@ -498,238 +310,55 @@ document.addEventListener("DOMContentLoaded", function(event) {
   }
   //obj.selectedIndex = 21;
 
-  var events = []
-
-  /**
-   * Populate the events data to the checkbox elements
-   * @param  {[{"CampaignId":string, "Event Display Name":string, "Max Signups":number}]}
-   */
-  const populateEventSelections = (events) => {
-    let offlineDOM = document.querySelector(".offline-sessions");
-    let sessionDOM = document.querySelector(".webinar-sessions");
-    //let selectDOM = document.querySelector(".select-sessions");//
-    if ( !sessionDOM || !offlineDOM) {
-      throw "Cannot find the webinar-sessions DOM."
-    }
-
-    offlineDOM.innerHTML = '<legend>現場活動</legend>'; // clear loading content    
-    sessionDOM.innerHTML = '<legend>線上活動</legend>'; // clear loading content    
-
-    let topics = [];
-    let topicSessions = [];
-    let newTopicIndex = 0
-
-    // populate the events to the select element        
-    events.forEach((row, k) => {
-      if (row["Event Display Name"] == "undefined" || !row["Event Display Name"]) {
-        return;
-      }      
-      
-      // creating the session / topic
-      // creating hidden input for EndDate
-      let endDate = document.createElement('input');
-      endDate.type = "hidden";
-      endDate.id = `endDate${k}`;
-      endDate.value = row["From DateTime"].substr(0, 10).replace(/\//g, "-");
-
-      // creating checkbox element
-      let checkbox = document.createElement('input');
-      checkbox.type = "checkbox";
-      checkbox.id = `session${k}`;
-      checkbox.name = `sessions[]`;
-      checkbox.className = `session-group`;
-      checkbox.value = row["CampaignId"];
-      //checkbox.required = true;      
-
-      // creating label for checkbox
-      let label = document.createElement('label');
-      label.htmlFor = `session${k}`;
-      label.id = `label-session${k}`;
-      label.appendChild(document.createTextNode(`${row["Session"]}`));      
-      
-      // for display
-      let topicBgColor = '#edf9d1';
-      if (newTopicIndex % 2) {
-        topicBgColor = '#ffffff';
-      }
-
-      if (topics.includes(row["Event Display Name"])) { //If the topic already exists, get it's index of topics[]
-        let topicIndex = topics.indexOf(row["Event Display Name"]);        
-
-        // add the non-first session
-        // get the container, and appending the checkbox and label to it     
-        let fullNameInput = document.createElement('input');
-        fullNameInput.type = 'hidden';        
-        fullNameInput.id = `fullName-session${k}`;
-        fullNameInput.value = `${row["Session"]} ${row["Event Display Name"]}`;
-
-        let sessionDiv = topicSessions[topicIndex];
-        //sessionDiv.className = "form__session";
-        sessionDiv.appendChild(checkbox);
-        sessionDiv.appendChild(label);
-        sessionDiv.appendChild(endDate);
-        sessionDiv.appendChild(fullNameInput);
-        sessionDiv.id = `container${topicIndex}`;     
-        
-        // finding the exist topic container, add session into it
-        let topicContainerDiv = document.getElementById(`topicContainer${topicIndex}`);         
-        topicContainerDiv.appendChild(sessionDiv);
-
-      } else { // if it is a new topic, insert into topics[]         
-        // creating label for this Event Display Name
-        // creating div as container
-        let topicDiv = document.createElement('div');   
-        let fromDT = new Date(row["From DateTime"]);          
-        topicDiv.className = "form__topic " + (fromDT.getMonth() + 1).toString();
-        let topicLabel = document.createElement('label');        
-        topicLabel.appendChild(document.createTextNode(`${row["Event Display Name"]}`));
-        topicDiv.appendChild(topicLabel);                
-        topicDiv.style.backgroundColor = topicBgColor;
-        topicDiv.id = `topic${newTopicIndex}`;
-
-        // add the first session        
-        // creating div as container, and appending the checkbox and label to it        
-        let fullNameInput = document.createElement('input');
-        fullNameInput.type = 'hidden';        
-        fullNameInput.id = `fullName-session${k}`;
-        fullNameInput.value = `${row["Session"]} ${row["Event Display Name"]}`;
-
-        let sessionDiv = document.createElement('div');      
-        sessionDiv.className = "form__session";
-        sessionDiv.appendChild(checkbox);
-        sessionDiv.appendChild(label);
-        sessionDiv.appendChild(endDate);
-        sessionDiv.appendChild(fullNameInput);
-        sessionDiv.id = `container${newTopicIndex}`;
-        sessionDiv.style.backgroundColor = topicBgColor;    
-        
-        // creating a topic container, add topic / session into it, type of are div
-        let topicContainerDiv = document.createElement('div');         
-        topicContainerDiv.appendChild(topicDiv);
-        topicContainerDiv.appendChild(sessionDiv);
-        topicContainerDiv.id = `topicContainer${newTopicIndex}`;
-
-        // add sessionDiv to topicSessions[], typeOf is div
-        topicSessions.push(sessionDiv);
-
-        // add Event Display Name to topics[], typeOf is string
-        topics.push(row["Event Display Name"]);        
-        newTopicIndex++;    
-        
-        if (row["Offline"] === "TRUE") {
-          offlineDOM.appendChild(topicContainerDiv);
-          //console.log(row["Event Display Name"], " add to Offline");
-        } else {
-          sessionDOM.appendChild(topicContainerDiv);
-          //console.log(row["Event Display Name"], " add to Online");
-        }
-      }      
-
-      // disable the checkbox of full session
-      if (row["Max Signups"] == 0 || !row["CampaignId"]) {        
-        document.getElementById(`session${k}`).disabled = true;
-        label.className = "session-disabled";
-      }
-      if (row["is-full"]) {        
-        document.getElementById(`session${k}`).disabled = true;
-        label.className = "session-disabled";        
-        label.innerHTML += `<span class="label__session-full">已額滿</span>`;
-      }
-      
-      // disable the checkbox of not open session      
-      if (row["Open"] == "未開放") {                
-        document.getElementById(`session${k}`).disabled = true;        
-        label.className = "session-disabled";
-        label.innerHTML += `<span class="label__session-unopened">未開放</span>`;
-      } else if (row["Open"] == "已結束") {        
-        document.getElementById(`session${k}`).disabled = true;        
-        label.className = "session-disabled";
-        label.innerHTML += `<span class="label__session-closed">已結束</span>`;
-      }
-    });
-
-    if (document.querySelector(".offline-sessions").childElementCount === 1) {
-      document.querySelector(".offline-sessions").style.display = "none";
-    }
-    if (document.querySelector(".webinar-sessions").childElementCount === 1) {
-      document.querySelector(".webinar-sessions").style.display = "none";
-    }
-  }
+  // set campaignId
+  document.querySelector('#CampaignId').value = webinarCampaignId;
 
   // fetch content / image
-  fetch(contentUrl)
-    .then(response => response.text())
-    .then(response => {
-      var lines = response.split("\n");
-      //var result = [];
-      //var headers=lines[0].split(",").map(Function.prototype.call, String.prototype.trim);
+  fetch(contentUrl).then(function(response) {
+      // response.json() returns a promise, use the same .then syntax to work with the results
+      response.json().then(function(jsonObj) {
+        //console.log(jsonObj.records[0]);
+        document.getElementsByClassName("img-div")[0].innerHTML = jsonObj.records[0].Image;
+        document.title = jsonObj.records[0].Title;
+        document.getElementsByClassName("title")[0].innerHTML = jsonObj.records[0].Title;
+        document.getElementsByClassName("title")[1].innerHTML = jsonObj.records[0].Title;
+        document.getElementsByClassName("content-top")[0].innerHTML = jsonObj.records[0].ContentTop;
+        document.getElementsByClassName("content-bottom")[0].innerHTML = jsonObj.records[0].ContentBottom;
+        document.getElementsByClassName("content")[0].innerHTML = jsonObj.records[0].ThankYouMessage;
 
-      for(var i=0;i<lines.length;i++){        
-        var currentline=lines[i].split(",");        
-        //console.log(currentline[0]);
-
-        if (currentline[0].toLowerCase().indexOf("image") >= 0) {          
-          //document.getElementsByClassName("img-div")[0].style.backgroundImage = `url(${currentline[1].trim()})`;
-          //document.getElementsByClassName("img-div")[0].innerHTML = `<img src='${currentline[1].trim()}' style='width:100%;' />`;
-          document.getElementsByClassName("img-div")[0].innerHTML = currentline[1].trim();
-        } else if (currentline[0].toLowerCase().indexOf("title") >= 0) { 
-          document.title = currentline[1].trim() + "｜綠色和平";
-          document.getElementsByClassName("title")[0].innerHTML = currentline[1].trim();
-          document.getElementsByClassName("title")[1].innerHTML = currentline[1].trim();
-        } else if (currentline[0].toLowerCase().indexOf("content top") >= 0) {
-          document.getElementsByClassName("content-top")[0].innerHTML = currentline[1].trim();
-        } else if (currentline[0].toLowerCase().indexOf("content bottom") >= 0) {
-          document.getElementsByClassName("content-bottom")[0].innerHTML = currentline[1].trim();
-        } else if (currentline[0].toLowerCase().indexOf("thank you message") >= 0) {
-          document.getElementsByClassName("content")[0].innerHTML = currentline[1].trim();          
-        } else if (currentline[0].toLowerCase().indexOf("share preview") >= 0) {
-          $('meta[property=og\\:image]').attr('content', currentline[1].trim());
-        }
-
-      }
-    });
-
-  // step 1: fetch events from gsheet
-  // See howto use gsheet as DB
-  //fetch("https://docs.google.com/spreadsheets/u/0/d/1zf00KMnjfJY9lHou15jHREaRD9PBK6AgjNialKNkzGQ/export?format=csv&id=1zf00KMnjfJY9lHou15jHREaRD9PBK6AgjNialKNkzGQ&gid=0")
-  fetch(googleSheetUrl)
-    .then(response => response.text())
-    .then(response => csvJSON(response))
-    .then(response => { // replace the event context      
-      //console.log('response', response)
-      events = response
-      populateEventSelections(events)
-      return response
-    })
-
-    // step 2: fetch the signup numbers
-    .then(response => {
-      let campaignIds = response.map(row => row["CampaignId"])
-      //console.log('campaignIds', campaignIds)
-      return fetch("https://cloud.greentw.greenpeace.org/campaign-member-counts?campaignIds="+campaignIds.join(","))
-    })
-    .then(response => response.json())
-    .then(response => {      
-      let rows = response;
-      
-      rows.forEach(serverRow => {
-        let campaignId = serverRow["Id"]
-        
-        // find that campaign
-        let idx = events.findIndex(e => e.CampaignId===campaignId);
-        if (idx > -1) {
-          let numRes = parseInt(serverRow["NumberOfResponses"], 10);
-          let targetSignups = parseInt(events[idx]["Max Signups"], 10);
-          
-          if (numRes >= targetSignups) {            
-            events[idx]["is-full"] = true;
-          }          
-        }
+        hideFullPageLoading();
       });
-      populateEventSelections(events) // update the display names
+  }).catch(err => console.error(err)); 
 
-      hideFullPageLoading();
-    });
-
+  //let maxSignups = 0;
+  fetch("https://gsheet-toolkit.small-service.gpeastasia.org/v1/db/tw-COP26_setting")
+    .then(response =>  response.json())
+    .then(function(jsonObj) {            
+      return jsonObj.records[0].MaxSignups;      
+    })
+    .then(maxSignups => {      
+      return fetch("https://cloud.greentw.greenpeace.org/campaign-member-counts")  
+        .then(response => response.json())
+        .then(response => {      
+          let rows = response;
+          
+          rows.forEach(serverRow => {
+            let campaignId = serverRow["Id"];
+            
+            // find this campaign        
+            if (campaignId === webinarCampaignId) {
+              let numRes = parseInt(serverRow["NumberOfResponses"], 10);              
+              if (numRes >= maxSignups) {
+                console.log('報名人數已滿' + numRes);
+                showFullPageMessage("報名人數已滿", "#fff", "#66cc00", false);
+              } else {
+                console.log('歡迎報名 ' + numRes);
+              }              
+            }
+          });
+        });  
+    })
+    .catch(err => console.error(err)); 
+  
   formValidate();
 });
